@@ -166,6 +166,6 @@ const evolve = function(world, num_cues) {
 //------------------------------------------------------------------------------
 
 console.log("Best agent parameters for 'simple_world'")
-evolve(simple_world, simple_world_num_cues)
+console.log(evolve(simple_world, simple_world_num_cues))
 
 // TODO: Run more simulations once we define more worlds to simulate.
