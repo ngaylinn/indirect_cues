@@ -2,7 +2,7 @@
 
 This is work-in-progress for an experiment developed at the [Diverse Intelligences Summer Institute](https://disi.org).
 
-This project explores cues propagating through an ecological system, with different reliabilities, detection costs, and causal structures, in order to determine when it is beneficial to attend to indirect cues rather than direct ones. We do this using an evolutionary algorithm, that evolves a policy for an agent operating in such a noisy information environment.
+This project explores cues propagating through an ecological system, with different reliabilities, detection costs, and causal structures, in order to determine when it is beneficial to attend to indirect cues rather than direct ones. We do this using an evolutionary algorithm to find a policy for an agent operating in such a noisy information environment.
 
 The project contributors are:
 - Jacob Chisausky
