@@ -1,0 +1,171 @@
+//------------------------------------------------------------------------------
+// Models
+//------------------------------------------------------------------------------
+
+const simple_world_num_cues = 4
+const simple_world = function(agent) {
+    return function() {
+        // Set up the state of the world and the unreliable cues.
+        const weather = flip(0.5)
+        const berries = (weather && flip(0.95)) || (!weather && flip(0.3))
+        const deer = (weather && flip(0.8)) || (!weather && flip(0.15))
+        const scat = (deer && flip(0.9)) || (!deer && flip(0.3))
+
+        // This is what the agent is trying to predict.
+        const target = deer
+
+        // Let the agent observe the cues and behave accordingly, incurring
+        // costs.
+        const cues = [weather, berries, deer, scat]
+        const costs = [0.1, 0.1, 0.3, 0.2]
+        const behavior = agent(cues, costs)
+        const prediction = behavior[0]
+        const energy_spent = behavior[1]
+
+        // The agent gets a reward of 1 energy point for guessing the target
+        // state correctly, and 0 for getting it wrong. Regardless, it pays a
+        // cost in energy points for each cue it observed. Its fitness score is
+        // the total energy gained / expended by behaving.
+        const fitness = (prediction == target) - energy_spent
+        return fitness
+    }
+}
+
+// TODO: Add a few other models to compare.
+
+const expected_fitness = function(world, agent_params) {
+    expectation(Infer(world(make_agent(agent_params))))
+}
+
+
+//------------------------------------------------------------------------------
+// Agent
+//------------------------------------------------------------------------------
+
+// Make a function that generates behavior, given the parameters that control
+// that behavior.
+const make_agent = function(params) {
+    return function(cues, costs) {
+        // Take a weighted sum over the observed cues in order to make a
+        // prediction. Add in bias so the agent can have an evolved preference
+        // regardless of the cues it observes.
+        const prediction = sum(map(
+            function(i) {
+                params.weights[i] > 0 ? cues[i] * params.weights[i] : 0
+            }, _.range(cues.length))) + params.bias > 0.5
+
+        // Incur a cost for every cue observed.
+        const energy_spent = sum(map(
+            function(i) {
+                params.weights[i] > 0 ? costs[i] : 0 }
+            , _.range(cues.length)))
+
+        // Return a summary of behavior
+        return [prediction, energy_spent]
+    }
+}
+
+
+//------------------------------------------------------------------------------
+// Evolution
+//------------------------------------------------------------------------------
+
+const POPULATION_SIZE = 100
+const NUM_GENERATIONS = 50
+const MUTATION_SIZE = 0.01
+
+
+// Generate POPULATION_SIZE random sets of agent parameters, each with a number
+// of weights equal to the number of cues in the environment.
+const make_initial_population = function(num_cues) {
+    map(function () {
+        return {
+            weights: map(function(){ gaussian(0, 1) }, _.range(num_cues)),
+            bias: gaussian(0, 1)
+        }
+    }, _.range(POPULATION_SIZE))
+}
+
+
+// Add a bit of gaussian noise to the weights and biases for an entire
+// population of agent parameters.
+const mutate = function(population) {
+    map(function(agent_params) {
+        return {
+            weights: map(function(weight){
+                weight + gaussian(0, MUTATION_SIZE)
+            }, agent_params.weights),
+            bias: agent_params.bias + gaussian(0, MUTATION_SIZE)
+        }
+    }, population)
+}
+
+
+// Given a population and a parallel list with their associated fitness scores,
+// perform tournament selection to choose a new population.
+const select = function(population, fitness_scores) {
+    map(function() {
+        // Here we hard code a tournament size of two, since that's a good
+        // setting in my experience and making this customizable would be
+        // more complicated.
+        const i1 = randomInteger(population.length)
+        const i2 = randomInteger(population.length)
+        if (fitness_scores[i1] > fitness_scores[i2]) {
+            return population[i1]
+        } else {
+            return population[i2]
+        }
+    }, _.range(POPULATION_SIZE))
+}
+
+
+// Return the most fit set of agenet parameters from a population.
+const get_best = function(world, population) {
+    reduce(
+        function(agent_params, best_so_far) {
+            const fitness = expected_fitness(world, agent_params)
+            if (fitness > best_so_far.fitness) {
+                return {fitness: fitness, agent_params: agent_params}
+            } else {
+                return best_so_far
+            }
+        },
+        {fitness: -Infinity},
+        population)
+}
+
+
+// Use evolution to find agent behavior to fit the given world, which has a
+// given number of cues in it.
+const evolve = function(world, num_cues) {
+    // Generate a final population by starting with an initial population and
+    // running through NUM_GENERATIONS reproduction cycles.
+    const final_population = reduce(
+        function(generation, population) {
+            // Evaluate the previous population by finding the expected fitness
+            // for each set of agent parameters in the given world.
+            const fitness_scores = map(
+                function(agent_params) {
+                    expected_fitness(world, agent_params)
+                },
+                population)
+
+            // Generate the next population from the previous one.
+            mutate(select(population, fitness_scores))
+        },
+        make_initial_population(num_cues),
+        _.range(NUM_GENERATIONS))
+
+    // Return just the best individual from the final population.
+    get_best(world, final_population)
+}
+
+
+//------------------------------------------------------------------------------
+// Run the simulations
+//------------------------------------------------------------------------------
+
+console.log("Best agent parameters for 'simple_world'")
+evolve(simple_world, simple_world_num_cues)
+
+// TODO: Run more simulations once we define more worlds to simulate.
