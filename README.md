@@ -1,4 +1,4 @@
-# Information Cascades
+# Indirect Cues
 
 This is work-in-progress for an experiment developed at the [Diverse Intelligences Summer Institute](https://disi.org).
 
