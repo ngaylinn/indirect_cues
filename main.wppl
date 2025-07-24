@@ -2,22 +2,21 @@
 // Models
 //------------------------------------------------------------------------------
 
-const simple_world_num_cues = 4
+// Given an agent, create a simulation of that agent operating within a
+// probabilistic ecological environment.
+const simple_world_num_cues = 2
 const simple_world = function(agent) {
     return function() {
         // Set up the state of the world and the unreliable cues.
-        const weather = flip(0.5)
-        const berries = (weather && flip(0.95)) || (!weather && flip(0.3))
-        const deer = (weather && flip(0.8)) || (!weather && flip(0.15))
-        const scat = (deer && flip(0.9)) || (!deer && flip(0.3))
-
-        // This is what the agent is trying to predict.
-        const target = deer
+        const hidden = flip(0.8)
+        const indirect_h = (hidden && flip(0.95)) || (!hidden && flip(0.3))
+        const target = (hidden && flip(0.8)) || (!hidden && flip(0.15))
+        const indirect_t = (target && flip(0.9)) || (!target && flip(0.3))
 
         // Let the agent observe the cues and behave accordingly, incurring
         // costs.
-        const cues = [weather, berries, deer, scat]
-        const costs = [0.1, 0.1, 0.3, 0.2]
+        const cues = [indirect_h, target, indirect_t]
+        const costs = [0.1, 0.5, 0.2]
         const behavior = agent(cues, costs)
         const prediction = behavior[0]
         const energy_spent = behavior[1]
@@ -31,7 +30,65 @@ const simple_world = function(agent) {
     }
 }
 
-// TODO: Add a few other models to compare.
+const deep_world_num_cues = 5
+const deep_world = function(agent) {
+    return function() {
+        // Set up the state of the world and the unreliable cues.
+        const hidden = flip(0.5)
+        const indirect_h1 = (hidden && flip(0.95)) || (!hidden && flip(0.3))
+        const indirect_h2 =
+            (indirect_h1 && flip(0.95)) || (!indirect_h1 && flip(0.3))
+        const target = (hidden && flip(0.8)) || (!hidden && flip(0.15))
+        const indirect_t1 = (target && flip(0.9)) || (!target && flip(0.3))
+        const indirect_t2 =
+            (indirect_t1 && flip(0.9)) || (!indirect_t1 && flip(0.3))
+
+        // Let the agent observe the cues and behave accordingly, incurring
+        // costs.
+        const cues = [
+            indirect_h1, indirect_h2, target, indirect_t1, indirect_t2]
+        const costs = [0.1, 0.05, 0.5, 0.2, 0.1]
+        const behavior = agent(cues, costs)
+        const prediction = behavior[0]
+        const energy_spent = behavior[1]
+
+        // The agent gets a reward of 1 energy point for guessing the target
+        // state correctly, and 0 for getting it wrong. Regardless, it pays a
+        // cost in energy points for each cue it observed. Its fitness score is
+        // the total energy gained / expended by behaving.
+        const fitness = (prediction == target) - energy_spent
+        return fitness
+    }
+}
+
+const broad_world_num_cues = 5
+const broad_world = function(agent) {
+    return function() {
+        // Set up the state of the world and the unreliable cues.
+        const hidden = flip(0.5)
+        const indirect_h1 = (hidden && flip(0.95)) || (!hidden && flip(0.3))
+        const indirect_h2 = (hidden && flip(0.95)) || (!hidden && flip(0.3))
+        const target = (hidden && flip(0.8)) || (!hidden && flip(0.15))
+        const indirect_t1 = (target && flip(0.9)) || (!target && flip(0.3))
+        const indirect_t2 = (target && flip(0.9)) || (!target && flip(0.3))
+
+        // Let the agent observe the cues and behave accordingly, incurring
+        // costs.
+        const cues = [
+            indirect_h1, indirect_h2, target, indirect_t1, indirect_t2]
+        const costs = [0.1, 0.05, 0.5, 0.2, 0.1]
+        const behavior = agent(cues, costs)
+        const prediction = behavior[0]
+        const energy_spent = behavior[1]
+
+        // The agent gets a reward of 1 energy point for guessing the target
+        // state correctly, and 0 for getting it wrong. Regardless, it pays a
+        // cost in energy points for each cue it observed. Its fitness score is
+        // the total energy gained / expended by behaving.
+        const fitness = (prediction == target) - energy_spent
+        return fitness
+    }
+}
 
 const expected_fitness = function(world, agent_params) {
     expectation(Infer(world(make_agent(agent_params))))
@@ -168,4 +225,8 @@ const evolve = function(world, num_cues) {
 console.log("Best agent parameters for 'simple_world'")
 console.log(evolve(simple_world, simple_world_num_cues))
 
-// TODO: Run more simulations once we define more worlds to simulate.
+console.log("Best agent parameters for 'deep_world'")
+console.log(evolve(deep_world, deep_world_num_cues))
+
+console.log("Best agent parameters for 'broad_world'")
+console.log(evolve(broad_world, broad_world_num_cues))
